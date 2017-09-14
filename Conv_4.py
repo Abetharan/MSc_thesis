@@ -85,67 +85,6 @@ def cross_validation_split(eval_data,eval_labels,training_data,training_labels):
 	
 	return training_data,training_labels,validation_data,validation_labels,testing_data,testing_labels
 
-def data_augment(data, y):
-	''' Modified version for tensorflow and my data of T Florian Muellerkleins deep learning challenge data augmentation code, from: 
-	   http://florianmuellerklein.github.io/cnn_streetview/
-	'''
-
-	'''
-	Data augmentation batch iterator for feeding images into CNN.
-	rotate all images in a given batch between -10 and 10 degrees
-	random translations between -10 and 10 pixels in all directions.
-	random zooms between 1 and 1.3.
-	random shearing between -25 and 25 degrees.
-	randomly applies sobel edge detector to 1/4th of the images in each batch.
-	randomly inverts 1/2 of the images in each batch.
-	'''
-
-	pixels=192
-
-	
-	max_values=np.amax(data,axis=1)
-	data=data=np.divide(data,max_values[:,None])
-	X_batch = np.asarray(data,dtype=np.float32)
-	y_batch = y
-	# set empty copy to hold augmented images so that we don't overwrite
-	X_batch_aug = np.empty(shape = (X_batch.shape[0],pixels, pixels),
-	                       dtype = 'float32')
-
-	# random rotations betweein -10 and 10 degrees
-	dorotate = rand.randint(-5,5)
-
-
-	# random translations
-	trans_1 = rand.randint(-10,10)
-	trans_2 = rand.randint(-10,10)
-
-	# random zooms
-	zoom = rand.uniform(1, 1.3)
-
-
-	# set the transform parameters for skimage.transform.warp
-	# have to shift to center and then shift back after transformation otherwise
-	# rotations will make image go out of frame
-	center_shift   = np.array((pixels, pixels)) / 2. - 0.5
-	tform_center   = transform.SimilarityTransform(translation=-center_shift)
-	tform_uncenter = transform.SimilarityTransform(translation=center_shift)
-
-	tform_aug = transform.AffineTransform(rotation = np.deg2rad(dorotate),
-	                                      scale =(1/zoom, 1/zoom),	
-	                                      translation = (trans_1, trans_2)
-	                                      )
-
-	tform=tform_aug+tform_center+tform_uncenter
-
-	# images in the batch do the augmentation
-	for j in range(X_batch.shape[0]):
-		warping_image=np.reshape(X_batch[j],[192,192])
-		X_batch_aug[j,:,:] = transform.warp(warping_image, tform)
-	                                  
-	X_batch_aug=np.reshape(X_batch_aug,[-1,192*192])
-	
-	return X_batch_aug,y_batch
-
 def train(epoch_max):
 	'''
 	Purpose: Neural network body, has all the functions required to generate my graph, run training and test model.
@@ -153,7 +92,6 @@ def train(epoch_max):
 
 	#Import data where eval_data is to be split into validation data and testing data.
 	#This was done as for this project the training data went through re-balancing using Adasyn 
-	#Feel free to modify this section as see fit. 
 	data=np.load()
 	labels=np.load()
 	
@@ -401,7 +339,7 @@ def train(epoch_max):
 	
 
 	merged=tf.summary.merge_all()
-	train_writer=tf.summary.FileWriter('useful_name',sess.graph) ##Replace useful_name with Name of the tensorboard file and location 
+	train_writer=tf.summary.FileWriter('useful_name',sess.graph)
 	test_writer=tf.summary.FileWriter('useful_name')
 	sess.run(tf.global_variables_initializer())
 	saver = tf.train.Saver()
@@ -419,7 +357,7 @@ def train(epoch_max):
 			step_1=offset+batch_size
 			xs=data[offset:step_1,:]
 			ys = labels[offset:step_1,:]
-			xs,ys=data_augment(xs,ys)
+
 			k=0.6
 			phases=1
 			#xs = tf.image.random_contrast(xs, lower=0.5, upper=1.0)
@@ -458,23 +396,16 @@ def train(epoch_max):
 		if epoch>0:
 			avg_loss_list.append(np.mean(loss_list))
 			print(avg_loss_list)
-			full_loss.append(loss_list)
-			pickle.dump(avg_loss_list,open('avg_loss_conv4_16_label_augmented.p','wb'))
-			pickle.dump(mini_batch_list,open('mini_batch_list_16_label_augmented.p','wb'))
-			pickle.dump(validation_list,open('validation_list_conv4_16_label_augmented.p','wb'))
-			pickle.dump(full_loss,open('full_loss_conv4_16_label_augmented.p','wb'))
-
-			if avg_loss_list[epoch-2]>avg_loss_list[epoch-1]:
-				saver.save(sess, 'Conv4_deep_net_full_label_partial_augment_epoch_20',global_step=epoch-1) #Name network save file 
+			
+			
+			saver.save(sess, 'Conv4_192_no_augmented_16_labels_better',global_step=epoch-1)
 			
 			
 			
 			
 		loss_list=[]
 		for i in range(steps):
-
 			if i %10 ==0:
-				#print validation accuracy for feedback on how the network is training
 				summary,acc=sess.run([merged,accuracy],feed_dict=feed_dict('validate',i,validation_data,validation_labels))
 				test_writer.add_summary(summary,i)
 				print('Validation accuracy at epoch {} step {}: {}'.format(epoch,i,acc))
@@ -482,7 +413,6 @@ def train(epoch_max):
 		
 			else:
 				if i%200 ==99 and epoch==epoch_max-1:
-					#save the metagraph down for future use
 					run_options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 					run_metadata=tf.RunMetadata()
 					summary,_,acc,loss=sess.run([merged,train_step,accuracy,cross_entropy],feed_dict=feed_dict('train',i,training_data,training_labels),
@@ -507,23 +437,20 @@ def train(epoch_max):
 			print(cm)
 			print(acc)
 			print('Top-5 score: {}'.format(topFive))
-			avg_loss_list.append(np.mean(loss_list))
-			print(avg_loss_list)
 
+	saver.save(sess, 'Conv4_192_no_augmented_16_labels_better',global_step=epoch-1)
 	sess.close()
 	train_writer.close()
 	test_writer.close()
-	print("--- %s seconds ---" % (time.time() - start_time))
 	return avg_loss_list,mini_batch_list,validation_list,full_loss
 
-epoch_max=6
+epoch_max=3
 avg_loss_list,mini_batch_list,validation_list,full_loss=train(epoch_max)	
 
 pickle.dump(avg_loss_list,open('avg_loss_conv4_16_label_augmented.p','wb'))
 pickle.dump(mini_batch_list,open('mini_batch_list_16_label_augmented.p','wb'))
 pickle.dump(validation_list,open('validation_list_conv4_16_label_augmented.p','wb'))
 pickle.dump(full_loss,open('full_loss_conv4_16_label_augmented.p','wb'))
-
 
 
 
