@@ -7,7 +7,9 @@ Tropical cyclones are the worst natural weather system that occurs on earth that
 Copyright &copy; 2017 by Abetharan Antony. “The copyright of this thesis rests with the author. No quotations from it should be published without the author’s prior written consent and information derived from it should be acknowledged”.
 
 The Folder contains scripts for:
-
 Data Gathering Pre-processing, Convolutional neural networks written in Tensorflow and Scripts for visualing final results
 
 All files have been commented, so I hope they are informative. Many of the scritps have been written specifically the project and may not be of immediate use for your projects, but I hope they can be useful!
+
+Note: AlexNet file is a modified version of the original Alexnet architecture and thus, DO NOT use as a AlexNet replacement. 
+ALL network scripts were reduced version of the modified AlexNet Architecture 
